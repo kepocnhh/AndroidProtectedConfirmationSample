@@ -14,16 +14,6 @@ sealed interface AuthenticateResult {
     }
 }
 
-fun Context.canAuthenticate(authenticators: Int): AuthenticateResult {
-    return when (BiometricManager.from(this).canAuthenticate(authenticators)) {
-        BiometricManager.BIOMETRIC_SUCCESS -> AuthenticateResult.Success
-        BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> AuthenticateResult.Error(AuthenticateResult.Error.Type.NO_HARDWARE)
-        BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> AuthenticateResult.Error(AuthenticateResult.Error.Type.HARDWARE_UNAVAILABLE)
-        BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> AuthenticateResult.Error(AuthenticateResult.Error.Type.NONE_ENROLLED)
-        else -> TODO()
-    }
-}
-
 fun FragmentActivity.authenticate(
     authenticators: Int,
     title: String,

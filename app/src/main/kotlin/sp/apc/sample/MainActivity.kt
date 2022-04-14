@@ -19,13 +19,17 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicText
@@ -46,25 +50,425 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import org.bouncycastle.crypto.generators.Argon2BytesGenerator
+import org.bouncycastle.crypto.params.Argon2Parameters
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.bouncycastle.util.encoders.Base64Encoder
+import org.bouncycastle.util.encoders.Hex
 import org.json.JSONObject
+import sp.apc.sample.util.androidx.compose.foundation.text.Text
+import java.io.ByteArrayOutputStream
 import java.nio.charset.Charset
 import java.security.KeyStore
 import java.security.SecureRandom
+import java.security.Security
+import java.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
+import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.PBEKeySpec
+import javax.crypto.spec.SecretKeySpec
 
 class MainActivity : AppCompatActivity() {
-    companion object {
-        private fun Context.showToast(message: String) {
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    @Composable
+    private fun BoxScope.OnEncrypted(
+        onDelete: () -> Unit,
+        onRead: (String) -> Unit
+    ) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .width(128.dp)
+                .background(color = Color(0xff222222))
+        ) {
+            val isRequested = remember { mutableStateOf(false) }
+            Text(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .background(color = Color(0xffffffff))
+                    .clickable {
+                        isRequested.value = true
+                    },
+                alignment = Alignment.Center,
+                text = "read",
+                style = TextStyle(
+                    fontSize = 16.sp,
+                    color = Color(0xff000000)
+                )
+            )
+            Text(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .background(color = Color(0xffffffff))
+                    .clickable {
+                        onDelete()
+                    },
+                alignment = Alignment.Center,
+                text = "delete",
+                style = TextStyle(
+                    fontSize = 16.sp,
+                    color = Color(0xffff0000)
+                )
+            )
+            if (isRequested.value) {
+                Dialog(
+                    onDismissRequest = {
+                        isRequested.value = false
+                    }
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .width(128.dp)
+                            .background(color = Color(0xff222222))
+                    ) {
+                        BasicText(
+                            text = "password",
+                            style = TextStyle(
+                                fontSize = 12.sp,
+                                color = Color(0xff000000)
+                            )
+                        )
+                        val password = remember { mutableStateOf("") }
+                        BasicTextField(
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            maxLines = 1,
+                            value = password.value,
+                            onValueChange = {
+                                password.value = it
+                            },
+                            textStyle = TextStyle(
+                                fontSize = 16.sp,
+                                color = Color(0xffffffff)
+                            )
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(36.dp),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            Text(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .clickable {
+                                        isRequested.value = false
+                                        onRead(password.value)
+                                    }
+                                    .padding(start = 8.dp, end = 8.dp),
+                                alignment = Alignment.Center,
+                                text = "ok",
+                                style = TextStyle(
+                                    fontSize = 16.sp,
+                                    color = Color(0xff00ff00)
+                                )
+                            )
+                        }
+                    }
+                }
+            }
         }
+    }
 
+    @Composable
+    private fun BoxScope.OnEmpty(onEncrypt: (String, String) -> Unit) {
+        val isRequested = remember { mutableStateOf(false) }
+        Text(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(64.dp)
+                .background(color = Color(0xffffffff))
+                .clickable {
+                    isRequested.value = true
+                },
+            alignment = Alignment.Center,
+            text = "+",
+            style = TextStyle(
+                fontSize = 16.sp,
+                color = Color(0xff000000)
+            )
+        )
+        if (isRequested.value) {
+            Dialog(
+                onDismissRequest = {
+                    isRequested.value = false
+                }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .width(128.dp)
+                        .background(color = Color(0xff222222))
+                ) {
+                    BasicText(
+                        text = "decrypted",
+                        style = TextStyle(
+                            fontSize = 12.sp,
+                            color = Color(0xff000000)
+                        )
+                    )
+                    val decrypted = remember { mutableStateOf("") }
+                    BasicTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        maxLines = 1,
+                        value = decrypted.value,
+                        onValueChange = {
+                            decrypted.value = it
+                        },
+                        textStyle = TextStyle(
+                            fontSize = 16.sp,
+                            color = Color(0xffffffff)
+                        )
+                    )
+                    BasicText(
+                        text = "password",
+                        style = TextStyle(
+                            fontSize = 12.sp,
+                            color = Color(0xff000000)
+                        )
+                    )
+                    val password = remember { mutableStateOf("") }
+                    BasicTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        maxLines = 1,
+                        value = password.value,
+                        onValueChange = {
+                            password.value = it
+                        },
+                        textStyle = TextStyle(
+                            fontSize = 16.sp,
+                            color = Color(0xffffffff)
+                        )
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(36.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Text(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .clickable {
+                                    isRequested.value = false
+                                    onEncrypt(decrypted.value, password.value)
+                                }
+                                .padding(start = 8.dp, end = 8.dp),
+                            alignment = Alignment.Center,
+                            text = "ok",
+                            style = TextStyle(
+                                fontSize = 16.sp,
+                                color = Color(0xff00ff00)
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun ByteArray.toString(charset: Charset): String {
+        return String(this, charset)
+    }
+
+    private fun Base64Encoder.encode(decoded: ByteArray): ByteArray {
+        return ByteArrayOutputStream().use {
+            encode(decoded, 0, decoded.size, it)
+            it.toByteArray()
+        }
+    }
+
+    private fun Base64Encoder.decode(encoded: ByteArray): ByteArray {
+        return ByteArrayOutputStream().use {
+            decode(encoded, 0, encoded.size, it)
+            it.toByteArray()
+        }
+    }
+
+    private fun keyDerivationFunction(
+        password: String,
+        salt: ByteArray,
+        size: Int
+    ): ByteArray {
+        val type = Argon2Parameters.ARGON2_id
+        val builder = Argon2Parameters.Builder(type)
+            .withVersion(Argon2Parameters.ARGON2_VERSION_10)
+            .withIterations(2)
+            .withMemoryPowOfTwo(16)
+            .withParallelism(1)
+//            .withSecret(password.toByteArray(Charsets.UTF_8)) // todo
+            .withSalt(salt)
+        val generator = Argon2BytesGenerator()
+        generator.init(builder.build())
+        return ByteArray(size).also {
+            generator.generateBytes(password.toCharArray(), it, 0, it.size)
+        }
+    }
+
+    private fun encrypt(decrypted: String, password: String) {
+//        val provider = BouncyCastleProvider.PROVIDER_NAME
+        val random = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            SecureRandom.getInstanceStrong()
+        } else {
+            val algorithm = "SHA1PRNG"
+            SecureRandom.getInstance(algorithm)
+        }
+        val salt = ByteArray(16).also {
+            random.nextBytes(it)
+        }
+        val hashed = keyDerivationFunction(
+            password = password,
+            salt = salt,
+            size = 16
+        )
+        val params = ByteArray(16).let {
+            random.nextBytes(it)
+            IvParameterSpec(it)
+        }
+        val algorithm = "AES"
+        val key: SecretKey = SecretKeySpec(hashed, algorithm)
+        val blockMode = "CBC"
+//        val paddings = "NoPadding"
+        val paddings = "PKCS7Padding"
+        val transformation = "$algorithm/$blockMode/$paddings"
+        val encoder = Base64Encoder()
+        val encrypted = Cipher.getInstance(transformation).let {
+            it.init(Cipher.ENCRYPT_MODE, key, params)
+            it.doFinal(encoder.encode(decrypted.toByteArray(Charsets.UTF_8)))
+        }
+        val json = JSONObject()
+            .put("salt", encoder.encode(salt).toString(Charsets.UTF_8))
+            .put("iv", encoder.encode(params.iv).toString(Charsets.UTF_8))
+            .put("encrypted", encoder.encode(encrypted).toString(Charsets.UTF_8))
+        getSharedPreferences().edit().putString("data", json.toString()).apply()
+    }
+
+    private fun decrypt(json: JSONObject, password: String) {
+        val encoder = Base64Encoder()
+        val salt = json.getString("salt").let {
+            encoder.decode(it.toByteArray(Charsets.UTF_8))
+        }
+        val hashed = keyDerivationFunction(
+            password = password,
+            salt = salt,
+            size = 16
+        )
+        val algorithm = "AES"
+        val key: SecretKey = SecretKeySpec(hashed, algorithm)
+        val blockMode = "CBC"
+        val paddings = "PKCS7Padding"
+        val transformation = "$algorithm/$blockMode/$paddings"
+        val params = json.getString("iv").let {
+            val d = encoder.decode(it.toByteArray(Charsets.UTF_8))
+            IvParameterSpec(d)
+        }
+        val encrypted = json.getString("encrypted").let {
+            encoder.decode(it.toByteArray(Charsets.UTF_8))
+        }
+        try {
+            val decrypted = Cipher.getInstance(transformation).let {
+                it.init(Cipher.DECRYPT_MODE, key, params)
+                it.doFinal(encrypted)
+            }
+            showToast(encoder.decode(decrypted).toString(Charsets.UTF_8))
+        } catch (e: Throwable) {
+            showToast("decrypt error: $e")
+        }
+    }
+
+    @Composable
+    private fun Presentation() {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(color = Color(0xff222222))
+        ) {
+            val data = remember {
+                mutableStateOf(
+                    getSharedPreferences().getString("data", null)
+                )
+            }
+            val value = data.value
+            if (value.isNullOrEmpty()) {
+                OnEmpty(
+                    onEncrypt = { decrypted, password ->
+                        encrypt(decrypted = decrypted, password = password)
+                        data.value = getSharedPreferences().getString("data", null)
+                    }
+                )
+            } else {
+                OnEncrypted(
+                    onDelete = {
+                        getSharedPreferences().edit().remove("data").apply()
+                        data.value = null
+                    },
+                    onRead = { password ->
+                        decrypt(json = JSONObject(value), password = password)
+                    }
+                )
+            }
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val algorithms = Security.getAlgorithms("SecretKeyFactory")
+//        println("algorithms: " + algorithms.sorted().joinToString(separator = "\n"))
+//        val decrypted = "2022/04/14 19:04"
+//        val password = "123456"
+//        val random = SecureRandom()
+//        val salt = ByteArray(16).also {
+//            random.nextBytes(it)
+//        }
+//        val hashed = keyDerivationFunction(
+//            password = password,
+//            salt = salt,
+//            size = 32
+//        )
+//        val algorithm = "AES"
+//        val params = ByteArray(16).let {
+//            random.nextBytes(it)
+//            IvParameterSpec(it)
+//        }
+//        val key: SecretKey = SecretKeySpec(hashed, 0, hashed.size, algorithm)
+//        val blockMode = "CBC"
+//        val paddings = "NoPadding"
+//        val transformation = "$algorithm/$blockMode/$paddings"
+//        val cipher = Cipher.getInstance(transformation)
+//        val encrypted = cipher.let {
+//            it.init(Cipher.ENCRYPT_MODE, key, params)
+//            it.doFinal(decrypted.toByteArray(Charsets.UTF_8))
+//        }
+//        val result = cipher.let {
+//            it.init(Cipher.DECRYPT_MODE, key, params)
+//            it.doFinal(encrypted)
+//        }
+//        println("""
+//            decrypted: $decrypted
+//            result: ${String(result, Charsets.UTF_8)}
+//        """.trimIndent())
+        window.decorView.setOnApplyWindowInsetsListener { view, windowInsets ->
+            view.setOnApplyWindowInsetsListener(null)
+            setContent {
+                Presentation()
+            }
+            windowInsets
+        }
+    }
+}
+
+class MainActivityOld : AppCompatActivity() {
+    companion object {
         private fun generateKey(
             algorithm: String,
             blockMode: String,
@@ -475,7 +879,7 @@ class MainActivity : AppCompatActivity() {
                                 .setAllowedAuthenticators(authenticators)
                                 .build()
 //                            BiometricPrompt(this@MainActivity, callback).authenticate(info, BiometricPrompt.CryptoObject(cipher))
-                            BiometricPrompt(this@MainActivity, callback).authenticate(info)
+                            BiometricPrompt(this@MainActivityOld, callback).authenticate(info)
                             decryptedDialogState.value = true
                         }
                         Spacer(

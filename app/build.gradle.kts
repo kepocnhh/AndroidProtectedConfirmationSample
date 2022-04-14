@@ -59,4 +59,5 @@ dependencies {
     implementation("androidx.biometric:biometric:1.1.0")
     implementation("androidx.compose.foundation:foundation:1.0.5")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.4.1")
+    implementation("org.bouncycastle:bcprov-jdk15on:1.70")
 }
