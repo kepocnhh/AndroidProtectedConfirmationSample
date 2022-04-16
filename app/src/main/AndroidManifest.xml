@@ -2,7 +2,6 @@
     package="sp.apc.sample">
 
     <application
-        android:name=".App"
         android:theme="@style/App.Theme"
         android:label="APC">
         <activity android:name=".MainActivity"
