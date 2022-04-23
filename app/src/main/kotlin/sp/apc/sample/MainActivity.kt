@@ -4,41 +4,26 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import org.bouncycastle.crypto.params.Argon2Parameters
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.util.encoders.Base64Encoder
 import org.json.JSONArray
 import org.json.JSONObject
-import sp.apc.sample.util.androidx.compose.foundation.text.Text
+import sp.apc.sample.module.Encrypted
+import sp.apc.sample.module.Init
+import sp.apc.sample.util.androidx.compose.foundation.layout.RowButtons
 import sp.apc.sample.util.androidx.compose.ui.window.DialogTextField
 import java.security.KeyFactory
-import java.security.KeyPairGenerator
-import java.security.PrivateKey
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
 import javax.crypto.spec.IvParameterSpec
@@ -49,47 +34,12 @@ class MainActivity : AppCompatActivity() {
         onDelete: () -> Unit,
         onUnlock: (String) -> Unit
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .align(Alignment.Center)
                 .width(128.dp)
-                .background(color = Color(0xff222222))
         ) {
             val isRequested = remember { mutableStateOf(false) }
-            Row(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(64.dp)
-                        .background(color = Color(0xffffffff))
-                        .clickable {
-                            isRequested.value = true
-                        },
-                    alignment = Alignment.Center,
-                    text = "unlock",
-                    style = TextStyle(
-                        fontSize = 16.sp,
-                        color = Color(0xff000000)
-                    )
-                )
-                Text(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(64.dp)
-                        .background(color = Color(0xffffffff))
-                        .clickable {
-                            onDelete()
-                        },
-                    alignment = Alignment.Center,
-                    text = "delete",
-                    style = TextStyle(
-                        fontSize = 16.sp,
-                        color = Color(0xffff0000)
-                    )
-                )
-            }
             if (isRequested.value) {
                 DialogTextField(
                     label = "password",
@@ -101,248 +51,17 @@ class MainActivity : AppCompatActivity() {
                         onUnlock(password)
                     }
                 )
-            }
-        }
-    }
-
-    @Composable
-    private fun BoxScope.OnEncrypted(
-        list: List<String>,
-        onDelete: () -> Unit,
-        onLock: () -> Unit,
-        onAdd: (String) -> Unit,
-        onDeleteItem: (Int) -> Unit
-    ) {
-        Column(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .width(256.dp)
-                .background(color = Color(0xff222222))
-        ) {
-            for (i in list.indices) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(48.dp)
-                ) {
-                    BasicText(
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                        text = list[i],
-                        style = TextStyle(
-                            fontSize = 12.sp,
-                            color = Color(0xffffffff)
-                        )
-                    )
-                    BasicText(
-                        modifier = Modifier
-                            .width(48.dp)
-                            .fillMaxHeight()
-                            .background(color = Color(0xff000000))
-                            .clickable {
-                                onDeleteItem(i)
-                            },
-                        text = "x",
-                        style = TextStyle(
-                            fontSize = 12.sp,
-                            color = Color(0xffff0000)
-                        )
-                    )
-                }
-            }
-            val isRequested = remember { mutableStateOf(false) }
-            Row(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                val isAdd = remember { mutableStateOf(false) }
-                Text(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(64.dp)
-                        .background(color = Color(0xffffffff))
-                        .clickable {
-                            isAdd.value = true
+            } else {
+                RowButtons(
+                    buttons = mapOf(
+                        "unlock" to {
+                            isRequested.value = true
                         },
-                    alignment = Alignment.Center,
-                    text = "add",
-                    style = TextStyle(
-                        fontSize = 16.sp,
-                        color = Color(0xff000000)
-                    )
-                )
-                if (isAdd.value) {
-                    DialogTextField(
-                        label = "add",
-                        onDismissRequest = {
-                            isAdd.value = false
-                        },
-                        onConfirm = { item ->
-                            onAdd(item)
-                            isAdd.value = false
-                        }
-                    )
-                }
-                Text(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(64.dp)
-                        .background(color = Color(0xff000000))
-                        .clickable {
+                        "delete" to {
                             onDelete()
-                        },
-                    alignment = Alignment.Center,
-                    text = "delete",
-                    style = TextStyle(
-                        fontSize = 16.sp,
-                        color = Color(0xffff0000)
-                    )
-                )
-                Text(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(64.dp)
-                        .background(color = Color(0xffffffff))
-                        .clickable {
-                            onLock()
-                        },
-                    alignment = Alignment.Center,
-                    text = "lock",
-                    style = TextStyle(
-                        fontSize = 16.sp,
-                        color = Color(0xffff0000)
-                    )
-                )
-            }
-            if (isRequested.value) {
-                Dialog(
-                    onDismissRequest = {
-                        isRequested.value = false
-                    }
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .width(128.dp)
-                            .background(color = Color(0xff222222))
-                    ) {
-                        BasicText(
-                            text = "password",
-                            style = TextStyle(
-                                fontSize = 12.sp,
-                                color = Color(0xff000000)
-                            )
-                        )
-                        val password = remember { mutableStateOf("") }
-                        BasicTextField(
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            maxLines = 1,
-                            value = password.value,
-                            onValueChange = {
-                                password.value = it
-                            },
-                            textStyle = TextStyle(
-                                fontSize = 16.sp,
-                                color = Color(0xffffffff)
-                            )
-                        )
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(36.dp),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            Text(
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .clickable {
-                                        isRequested.value = false
-                                        TODO()
-                                    }
-                                    .padding(start = 8.dp, end = 8.dp),
-                                alignment = Alignment.Center,
-                                text = "ok",
-                                style = TextStyle(
-                                    fontSize = 16.sp,
-                                    color = Color(0xff00ff00)
-                                )
-                            )
                         }
-                    }
-                }
-            }
-        }
-    }
-
-    @Composable
-    private fun BoxScope.OnEmpty(text: String, onEncrypt: (String) -> Unit) {
-        val isRequested = remember { mutableStateOf(false) }
-        Text(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .size(64.dp)
-                .background(color = Color(0xffffffff))
-                .clickable {
-                    isRequested.value = true
-                },
-            alignment = Alignment.Center,
-            text = text,
-            style = TextStyle(
-                fontSize = 16.sp,
-                color = Color(0xff000000)
-            )
-        )
-        if (isRequested.value) {
-            Dialog(
-                onDismissRequest = {
-                    isRequested.value = false
-                }
-            ) {
-                Column(
-                    modifier = Modifier
-                        .width(128.dp)
-                        .background(color = Color(0xff222222))
-                ) {
-                    BasicText(
-                        text = "password",
-                        style = TextStyle(
-                            fontSize = 12.sp,
-                            color = Color(0xff000000)
-                        )
                     )
-                    val password = remember { mutableStateOf("") }
-                    BasicTextField(
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        maxLines = 1,
-                        value = password.value,
-                        onValueChange = {
-                            password.value = it
-                        },
-                        textStyle = TextStyle(
-                            fontSize = 16.sp,
-                            color = Color(0xffffffff)
-                        )
-                    )
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(36.dp),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        Text(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .clickable {
-                                    isRequested.value = false
-                                    onEncrypt(password.value)
-                                }
-                                .padding(start = 8.dp, end = 8.dp),
-                            alignment = Alignment.Center,
-                            text = "ok",
-                            style = TextStyle(
-                                fontSize = 16.sp,
-                                color = Color(0xff00ff00)
-                            )
-                        )
-                    }
-                }
+                )
             }
         }
     }
@@ -497,8 +216,7 @@ class MainActivity : AppCompatActivity() {
             val value = data.value
             val values = remember { mutableStateOf<List<String>?>(null)}
             if (value.isNullOrEmpty()) {
-                OnEmpty(
-                    text = "init",
+                Init.Screen(
                     onEncrypt = { password ->
                         init(password = password)
                         data.value = getSharedPreferences().getString("data", null)
@@ -522,7 +240,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     )
                 } else {
-                    OnEncrypted(
+                    Encrypted.Screen(
                         list = list,
                         onDelete = {
                             getSharedPreferences().edit().remove("data").apply()
