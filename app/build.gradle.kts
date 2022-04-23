@@ -15,7 +15,7 @@ android {
         minSdk = 23
         targetSdk = compileSdk
         applicationId = "sp.apc.sample"
-        versionCode = 1
+        versionCode = 2
         versionName = "0.0.$versionCode"
     }
 

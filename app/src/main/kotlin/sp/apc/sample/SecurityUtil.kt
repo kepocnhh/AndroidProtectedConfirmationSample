@@ -54,10 +54,9 @@ fun ByteArray.toSecretKey(algorithm: String): SecretKey {
 }
 
 fun cipher(
-    provider: String,
     algorithm: String,
     blockMode: String,
     paddings: String
 ): Cipher {
-    return Cipher.getInstance("$algorithm/$blockMode/$paddings", provider)
+    return Cipher.getInstance("$algorithm/$blockMode/$paddings")
 }

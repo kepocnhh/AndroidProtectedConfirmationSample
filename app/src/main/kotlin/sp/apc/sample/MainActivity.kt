@@ -370,16 +370,13 @@ class MainActivity : AppCompatActivity() {
         val salt = random.nextBytes(16)
         val encoder = Base64Encoder()
         val algorithm = "AES"
-        val provider = BouncyCastleProvider.PROVIDER_NAME
         val pair = KeyPairGeneratorUtil.generateKeyPair(
-            provider = provider,
             algorithm = "RSA",
             size = 2048,
             random = random
         )
         val params = IvParameterSpec(random.nextBytes(16))
         val private = cipher(
-            provider = provider,
             algorithm = algorithm,
             blockMode = "CBC",
             paddings = "PKCS7Padding"
@@ -394,7 +391,6 @@ class MainActivity : AppCompatActivity() {
             decrypted = pair.private.encoded
         )
         val values = cipher(
-            provider = provider,
             algorithm = "RSA",
             blockMode = "ECB",
             paddings = "PKCS1Padding"
@@ -420,8 +416,7 @@ class MainActivity : AppCompatActivity() {
         val data = getSharedPreferences().getString("data", null)
         check(!data.isNullOrEmpty())
         val json = JSONObject(data)
-        val provider = BouncyCastleProvider.PROVIDER_NAME
-        val factory = KeyFactory.getInstance("RSA", provider)
+        val factory = KeyFactory.getInstance("RSA")
         val encoder = Base64Encoder()
         val public = factory.generatePublic(
             X509EncodedKeySpec(
@@ -432,7 +427,6 @@ class MainActivity : AppCompatActivity() {
             list.forEach { array.put(it) }
         }
         val encrypted = cipher(
-            provider = provider,
             algorithm = "RSA",
             blockMode = "ECB",
             paddings = "PKCS1Padding"
@@ -452,40 +446,6 @@ class MainActivity : AppCompatActivity() {
             .apply()
     }
 
-    private fun encrypt(decrypted: String, password: String) {
-        val random = secureRandom()
-        val salt = random.nextBytes(16)
-        val encoder = Base64Encoder()
-        val algorithm = "AES"
-        val key = Argon2KeyDerivationFunction(
-            type = Argon2Parameters.ARGON2_id,
-            version = Argon2Parameters.ARGON2_VERSION_10,
-            secret = encoder.encode(getDeviceId().toByteArray(Charsets.UTF_8)),
-            additional = encoder.encode(getAdditional().toByteArray(Charsets.UTF_8))
-        ).generateBytes(
-            password = password.toCharArray(),
-            salt = salt,
-            size = 16
-        ).toSecretKey(algorithm)
-        val params = IvParameterSpec(random.nextBytes(16))
-        val provider = BouncyCastleProvider.PROVIDER_NAME
-        val encrypted = cipher(
-            provider = provider,
-            algorithm = algorithm,
-            blockMode = "CBC",
-            paddings = "PKCS7Padding"
-        ).encrypt(
-            key = key,
-            params = params,
-            decrypted = encoder.encode(decrypted.toByteArray(Charsets.UTF_8))
-        )
-        val json = JSONObject()
-            .put("salt", encoder.encode(salt, Charsets.UTF_8))
-            .put("iv", encoder.encode(params.iv, Charsets.UTF_8))
-            .put("encrypted", encoder.encode(encrypted, Charsets.UTF_8))
-        getSharedPreferences().edit().putString("data", json.toString()).apply()
-    }
-
     private fun decrypt(json: JSONObject, password: String): JSONArray {
         val encoder = Base64Encoder()
         val algorithm = "AES"
@@ -499,9 +459,7 @@ class MainActivity : AppCompatActivity() {
             salt = encoder.decode(json.getString("salt")),
             size = 16
         ).toSecretKey(algorithm)
-        val provider = BouncyCastleProvider.PROVIDER_NAME
         val private = cipher(
-            provider = provider,
             algorithm = algorithm,
             blockMode = "CBC",
             paddings = "PKCS7Padding"
@@ -510,9 +468,8 @@ class MainActivity : AppCompatActivity() {
             params = IvParameterSpec(encoder.decode(json.getString("iv"))),
             encrypted = encoder.decode(json.getJSONObject("key").getString("private"))
         )
-        val factory = KeyFactory.getInstance("RSA", provider)
+        val factory = KeyFactory.getInstance("RSA")
         val decrypted = cipher(
-            provider = provider,
             algorithm = "RSA",
             blockMode = "ECB",
             paddings = "PKCS1Padding"
@@ -523,38 +480,6 @@ class MainActivity : AppCompatActivity() {
         val decoded = encoder.decode(decrypted, Charsets.UTF_8)
         println("decoded: $decoded")
         return JSONArray(decoded)
-    }
-
-    private fun decryptOld(json: JSONObject, password: String) {
-        val encoder = Base64Encoder()
-        val algorithm = "AES"
-        val key = Argon2KeyDerivationFunction(
-            type = Argon2Parameters.ARGON2_id,
-            version = Argon2Parameters.ARGON2_VERSION_10,
-            secret = encoder.encode(getDeviceId().toByteArray(Charsets.UTF_8)),
-            additional = encoder.encode(getAdditional().toByteArray(Charsets.UTF_8))
-        ).generateBytes(
-            password = password.toCharArray(),
-            salt = encoder.decode(json.getString("salt")),
-            size = 16
-        ).toSecretKey(algorithm)
-        val provider = BouncyCastleProvider.PROVIDER_NAME
-        try {
-            val decrypted = cipher(
-                provider = provider,
-                algorithm = algorithm,
-                blockMode = "CBC",
-                paddings = "PKCS7Padding"
-            ).decrypt(
-                key = key,
-                params = IvParameterSpec(encoder.decode(json.getString("iv"))),
-                encrypted = encoder.decode(json.getString("encrypted"))
-            )
-            showToast(encoder.decode(decrypted, Charsets.UTF_8))
-        } catch (e: Throwable) {
-            showToast("decrypt error: $e")
-        }
-        println("json: " + json.toString())
     }
 
     @Composable
