@@ -27,6 +27,87 @@ import sp.apc.sample.util.androidx.compose.foundation.text.Text
 @Composable
 fun DialogTextField(
     onDismissRequest: () -> Unit,
+    lKey: String,
+    lValue: String,
+    button: String,
+    onConfirm: (String, String) -> Unit
+) {
+    Dialog(onDismissRequest = onDismissRequest) {
+        Column(
+            modifier = Modifier
+                .width(128.dp)
+                .background(color = Color(0xff222222))
+        ) {
+            BasicText(
+                text = lKey,
+                style = TextStyle(
+                    fontSize = 12.sp,
+                    color = Color(0xff000000)
+                )
+            )
+            val key = remember { mutableStateOf("") }
+            BasicTextField(
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                maxLines = 1,
+                value = key.value,
+                onValueChange = {
+                    key.value = it
+                },
+                textStyle = TextStyle(
+                    fontSize = 16.sp,
+                    color = Color(0xffffffff)
+                )
+            )
+            BasicText(
+                text = lValue,
+                style = TextStyle(
+                    fontSize = 12.sp,
+                    color = Color(0xff000000)
+                )
+            )
+            val value = remember { mutableStateOf("") }
+            BasicTextField(
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                maxLines = 1,
+                value = value.value,
+                onValueChange = {
+                    value.value = it
+                },
+                textStyle = TextStyle(
+                    fontSize = 16.sp,
+                    color = Color(0xffffffff)
+                )
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Text(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .clickable {
+                            onConfirm(key.value, value.value)
+                        }
+                        .padding(start = 8.dp, end = 8.dp),
+                    alignment = Alignment.Center,
+                    text = button,
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        color = Color(0xff00ff00)
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun DialogTextField(
+    onDismissRequest: () -> Unit,
     label: String,
     onConfirm: (String) -> Unit
 ) {

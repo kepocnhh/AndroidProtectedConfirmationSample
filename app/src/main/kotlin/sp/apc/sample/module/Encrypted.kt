@@ -25,7 +25,7 @@ import sp.apc.sample.util.androidx.compose.ui.window.DialogTextField
 
 object Encrypted {
     @Composable
-    private fun Item(value: String, onDelete: () -> Unit) {
+    private fun Item(value: String, onDelete: () -> Unit, onDecrypt: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -34,7 +34,10 @@ object Encrypted {
             BasicText(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxHeight(),
+                    .fillMaxHeight()
+                    .clickable {
+                        onDecrypt()
+                    },
                 text = value,
                 style = TextStyle(
                     fontSize = 12.sp,
@@ -60,11 +63,12 @@ object Encrypted {
 
     @Composable
     fun Screen(
-        list: List<String>,
+        map: Map<String, String>,
         onDelete: () -> Unit,
         onLock: () -> Unit,
-        onAdd: (String) -> Unit,
-        onDeleteItem: (Int) -> Unit
+        onAdd: (key: String, decrypted: String) -> Unit,
+        onDeleteItem: (String) -> Unit,
+        onDecrypt: (key: String, encrypted: String) -> Unit
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -73,18 +77,24 @@ object Encrypted {
                     .width(256.dp)
                     .background(color = Color(0xff222222))
             ) {
-                for (i in list.indices) {
-                    Item(value = list[i], onDelete = { onDeleteItem(i) })
+                map.forEach { (key, encrypted) ->
+                    Item(
+                        value = key,
+                        onDelete = { onDeleteItem(key) },
+                        onDecrypt = { onDecrypt(key, encrypted) }
+                    )
                 }
                 val isAdd = remember { mutableStateOf(false) }
                 if (isAdd.value) {
                     DialogTextField(
-                        label = "add",
+                        lKey = "key",
+                        lValue = "value",
+                        button = "add",
                         onDismissRequest = {
                             isAdd.value = false
                         },
-                        onConfirm = { item ->
-                            onAdd(item)
+                        onConfirm = { key, decrypted ->
+                            onAdd(key, decrypted)
                             isAdd.value = false
                         }
                     )
